@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaflet Map dengan Popup, Label, Skala, Administrasi, dan Logo</title>
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        crossorigin=""
+    />
+    <style>
+        #map {
+            height: 90vh; /* Tinggi peta disesuaikan agar judul muat */
+            width: 85%;
+        }
+
+        #title {
+            text-align: center;
+            font-size: 30px;
+            font-weight: bold;
+            margin: 40px ;
+        }
+
+        /* Style untuk container logo */
+        #logo-container {
+            position: absolute;
+            top: 10px; /* Jarak dari atas */
+            right: 10px; /* Jarak dari kanan */
+            z-index: 1000; /* Pastikan di atas peta */
+            display: flex;
+            gap: 10px; /* Jarak antara dua logo */
+        }
+
+        #logo-container img {
+            width: 80px; /* Lebar logo */
+            height: auto; /* Tinggi menyesuaikan */
+            border: 1px solid #ccc; /* Opsi border */
+            border-radius: 5px; /* Membuat sudut gambar melengkung */
+            background: white;
+            padding: 3px; /* Opsi padding agar terlihat rapi */
+        }
+    </style>
+</head>
+<body>
+    <!-- Judul Peta -->
+    <div id="title">Peta Persil Desa Gading Rejo Kecamatan Pringsewu</div>
+
+    <!-- Kontainer Peta -->
+    <div id="map"></div>
+
+    <!-- Kontainer untuk logo -->
+    <div id="logo-container">
+        <img src="Logo_Geomatika.png" alt="Logo 1">
+        <img src="Logo_ITS.png" alt="Logo 2">
+    </div>
+    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Inisialisasi peta dengan koordinat Pringsewu
+        var map = L.map('map').setView([-5.3675, 105.069], 16);
+
+        // Tambahkan basemap satelit (Esri World Imagery)
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+            maxZoom: 19
+        }).addTo(map);
+
+        // Tambahkan skala di pojok kanan bawah
+        L.control.scale({
+            position: 'bottomright',
+            metric: true,
+            imperial: false
+        }).addTo(map);
+
+        // URL GeoJSON untuk Persil dan Administrasi
+        var geojsonPersilUrl = "Persil_SIPL_fixed_v4.json";
+        var geojsonAdministrasiUrl = "AR_Desa.json";
+
+        // Tambahkan Layer Administrasi Kecamatan Pringsewu
+        var administrasiStyle = {
+            color: "magenta",
+            weight: 2,
+            opacity: 0.8,
+            fillOpacity: 0.1
+        };
+
+        fetch(geojsonAdministrasiUrl)
+            .then(response => response.json())
+            .then(data => {
+                L.geoJSON(data, {
+                    style: administrasiStyle,
+                    onEachFeature: function (feature, layer) {
+                        layer.bindPopup("Desa Gading Rejo");
+                    }
+                }).addTo(map);
+            })
+            .catch(error => console.error("Error loading administrasi GeoJSON:", error));
+
+        // Fungsi untuk menambahkan label di centroid
+        function addCentroidLabel(feature, layer) {
+            if (feature.geometry && feature.geometry.type === "Polygon") {
+                var centroid = L.polygon(feature.geometry.coordinates).getBounds().getCenter();
+                var props = feature.properties;
+                if (props.NAMA) {
+                    L.marker(centroid, {
+                        icon: L.divIcon({
+                            className: 'label-icon',
+                            html: `<div style="font-size:10px; color:white; background-color:rgba(0,0,0,0.5); padding:2px; border-radius:3px;">${props.NAMA}</div>`,
+                            iconSize: [80, 20],
+                            iconAnchor: [40, 10]
+                        })
+                    }).addTo(map);
+                }
+            }
+        }
+
+        // Load GeoJSON untuk Persil
+        fetch(geojsonPersilUrl)
+            .then(response => response.json())
+            .then(data => {
+                L.geoJSON(data, {
+                    onEachFeature: function (feature, layer) {
+                        var props = feature.properties;
+                        var popupContent = `
+                            <b>NIB:</b> ${props.NIB || "Tidak Ada"}<br>
+                            <b>Nama:</b> ${props.NAMA || "Tidak Ada"}<br>
+                            <b>LUAS:</b> ${props.LUAS || "Tidak Ada"}<br>
+                            <b>Jenis Tanah:</b> ${props.Jenistnh || "Tidak Ada"}
+                        `;
+                        layer.bindPopup(popupContent);
+
+                        addCentroidLabel(feature, layer);
+                    }
+                }).addTo(map);
+            })
+            .catch(error => console.error("Error loading Persil GeoJSON:", error));
+
+        
+    </script>
+</body>
+</html>
